@@ -8,10 +8,14 @@ import mailclient.core.EmailClient;
 import mailclient.core.EmailMessage;
 
 public final class Main {
+    
+    
+    
+    
 
     private final static Scanner in = new Scanner(System.in);
     private final static PrintStream out = System.out;
-            
+
     public static void main(String[] args) throws Exception {
         out.println("Mail Client Version 0.01");
         out.print("Your email: ");
@@ -29,45 +33,48 @@ public final class Main {
 //                out.print("Enter message number to read, 'l' to list, 'w' to write a new message, 'q' to quit: ");
                 String command = readString("Enter message number to read, 'L' to list, 'W' to write a new message, 'Q' to quit");
 //                in.nextLine().trim();
-                if (command.equalsIgnoreCase("q"))
+                if (command.equalsIgnoreCase("q")) {
                     return;
-                else if (command.equalsIgnoreCase("l"))
+                } else if (command.equalsIgnoreCase("l")) {
                     messages = listMessages(emailClient);
-                else if (command.equalsIgnoreCase("w"))
+                } else if (command.equalsIgnoreCase("w")) {
                     send(emailClient);
-                else if (command.matches("^[0-9]+$"))
+                } else if (command.matches("^[0-9]+$")) {
                     displayMessage(messages.get(Integer.parseInt(command) - 1));
-                else
+                } else {
                     out.println("Invalid command");
-            } 
-            catch (Exception ex) {
-                if (ex.getMessage() == null)
+                }
+            } catch (Exception ex) {
+                if (ex.getMessage() == null) {
                     out.println(ex.getClass().getCanonicalName());
-                else
+                } else {
                     out.println("Error: " + ex.getMessage());
+                }
             }
         }
 //        displayMessage(messages.get(0));
 //        send(emailClient);
     }
-    
+
     private static String readEmailAddress() {
         while (true) {
             String address = in.nextLine().trim();
-            if (EmailAddress.isValidEmailAddress(address))
+            if (EmailAddress.isValidEmailAddress(address)) {
                 return address;
-            else
+            } else {
                 out.print("Invalid email address, try again: ");
+            }
         }
     }
-    
+
     private static String readPassword() {
-        if (System.console() != null)
+        if (System.console() != null) {
             return String.valueOf(System.console().readPassword());
-        else
+        } else {
             return in.nextLine();
+        }
     }
-    
+
     private static void send(EmailClient emailClient) throws Exception {
 //        out.print("To: ");
 //        String to = in.nextLine();
@@ -84,13 +91,14 @@ public final class Main {
 //            filePaths = new ArrayList<String>();
 //            fileNames = new ArrayList<String>();
         String attachmentInput;
-        while ((attachmentInput = readString("Enter filepath to add file, or enter to continue)")).length() > 0) 
+        while ((attachmentInput = readString("Enter filepath to add file, or enter to continue)")).length() > 0) {
             filePaths.add(attachmentInput.trim());
+        }
         out.print("Sending message...");
         emailClient.sendMessage(new EmailMessage(emailClient.getUserEmail(), to, subject, text), filePaths);
         out.println(" Message sent.");
     }
-    
+
     private static String readText() {
         StringBuilder buffer = new StringBuilder();
         String line = in.nextLine();
@@ -101,7 +109,7 @@ public final class Main {
         }
         return buffer.toString();
     }
-    
+
     private static ArrayList<EmailMessage> listMessages(EmailClient emailClient) throws Exception {
         out.print("Listing mail...");
         ArrayList<EmailMessage> messages = emailClient.listMessages();
@@ -110,21 +118,23 @@ public final class Main {
         if (messages.isEmpty()) {
             out.println("You have no mail.");
             return messages;
-        }
-        out.println("#   From                                     Subject");
-        out.println("--- ---------------------------------------- --------------------------");
-        for (int i = 0; i < messages.size(); i++) {
-            EmailMessage message = messages.get(i);
-            String subject = message.getSubject();
-            if (subject == null)
-                subject = "(no subject)";
+        } else {
+            out.println("#   From                                     Subject");
+            out.println("--- ---------------------------------------- --------------------------");
+            for (int i = 0; i < messages.size(); i++) {
+                EmailMessage message = messages.get(i);
+                String subject = message.getSubject();
+                if (subject == null) {
+                    subject = "(no subject)";
+                }
 //            subject = subject.substring(0, 50);               sdelat' if string > x...
-            out.printf("%-3d %-40s %s\n", i + 1, message.getFrom(), subject);
+                out.printf("%-3d %-40s %s\n", i + 1, message.getFrom(), subject);
+            }
         }
         out.println("-----------------------------------------------------------------------");
         return messages;
     }
-    
+
     private static void displayMessage(EmailMessage message) {
         out.println("-----------------------------------------------------------------------");
         out.println("From:    " + message.getFrom());
@@ -133,14 +143,14 @@ public final class Main {
         out.println();
         out.println(message.getText().trim());
         out.println("-----------------------------------------------------------------------");
-        
+
     }
 
     private static String readString(String query) {
         out.print(query + ": ");
         return in.nextLine().trim();
     }
-    
+
     public static void printLine(String string) {
         out.println(string);
     }
