@@ -8,6 +8,10 @@ import mailclient.core.EmailClient;
 import mailclient.core.EmailMessage;
 
 public final class Main {
+    
+    
+    
+    
 
     private final static Scanner in = new Scanner(System.in);
     private final static PrintStream out = System.out;
