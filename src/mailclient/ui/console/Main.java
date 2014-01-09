@@ -44,6 +44,11 @@ public final class Main {
                 if (ex.getMessage() == null)
                     out.println(ex.getClass().getCanonicalName());
                 else
+
+
+
+
+
                     out.println("Error: " + ex.getMessage());
             }
         }
