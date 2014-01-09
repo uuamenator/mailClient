@@ -44,11 +44,6 @@ public final class Main {
                 if (ex.getMessage() == null)
                     out.println(ex.getClass().getCanonicalName());
                 else
-
-
-
-
-
                     out.println("Error: " + ex.getMessage());
             }
         }
@@ -72,6 +67,23 @@ public final class Main {
         else
             return in.nextLine();
     }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     private static void send(EmailClient emailClient) throws Exception {
 //        out.print("To: ");
