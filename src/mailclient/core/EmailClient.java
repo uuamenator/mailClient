@@ -66,31 +66,21 @@ public class EmailClient {
         mimeMessage.setRecipients(javax.mail.Message.RecipientType.TO, InternetAddress.parse(message.getTo()));
         mimeMessage.setSubject(message.getSubject());
         mimeMessage.setText(message.getText());
-        if (filePaths != null) {
+        if (!filePaths.isEmpty()) {
             MimeMultipart mimeMultipart = new MimeMultipart();
             MimeBodyPart textPart = new MimeBodyPart();
             textPart.setText(message.getText());
             mimeMultipart.addBodyPart(textPart);
             
             for (int i = 0; i < filePaths.size(); i++) {
-                try {
-                    MimeBodyPart mimeBodyPart = new MimeBodyPart();
-                    DataSource source = new FileDataSource(filePaths.get(i));
-                    mimeBodyPart.setDataHandler(new DataHandler(source));
-                    File file = new File(filePaths.get(i));
-                    mimeBodyPart.setFileName(file.getName());
-                    mimeMultipart.addBodyPart(mimeBodyPart);
-                } catch (Exception e) {
-//                    printLine("error adding file, skipping...");
-                    mailclient.ui.console.Main.printLine("error adding file, skipping..." + e);
-                }
+                MimeBodyPart mimeBodyPart = new MimeBodyPart();
+                DataSource source = new FileDataSource(filePaths.get(i));
+                mimeBodyPart.setDataHandler(new DataHandler(source));
+                File file = new File(filePaths.get(i));
+                mimeBodyPart.setFileName(file.getName());
+                mimeMultipart.addBodyPart(mimeBodyPart);
             }
-            try {
-                mimeMessage.setContent(mimeMultipart);
-                
-            } catch (Exception e) {
-                    mailclient.ui.console.Main.printLine("error adding multipart, skipping..." + e);
-            }
+            mimeMessage.setContent(mimeMultipart);
         }
         Transport.send(mimeMessage);        
     }
