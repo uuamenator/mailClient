@@ -74,10 +74,10 @@ public class EmailClient {
             
             for (int i = 0; i < filePaths.size(); i++) {
                 MimeBodyPart mimeBodyPart = new MimeBodyPart();
-                DataSource source = new FileDataSource(filePaths.get(i));
+                String filePath = filePaths.get(i);
+                DataSource source = new FileDataSource(filePath);
                 mimeBodyPart.setDataHandler(new DataHandler(source));
-                File file = new File(filePaths.get(i));
-                mimeBodyPart.setFileName(file.getName());
+                mimeBodyPart.setFileName(new File(filePath).getName());
                 mimeMultipart.addBodyPart(mimeBodyPart);
             }
             mimeMessage.setContent(mimeMultipart);

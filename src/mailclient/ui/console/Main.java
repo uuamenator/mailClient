@@ -24,20 +24,28 @@ public final class Main {
         EmailClient emailClient = new EmailClient(userEmail, password);
 //        password = null; // padidinti shansus kad garbage collector nutrins passworda
         ArrayList<EmailMessage> messages = listMessages(emailClient);
+        int lastDisplayedMessageIndex = -1;
         while (true) {
             try {
 //                out.print("Enter message number to read, 'l' to list, 'w' to write a new message, 'q' to quit: ");
-                String command = readString("Enter message number to read, 'L' to list, 'W' to write a new message, 'Q' to quit");
+                String menuReplyOption = "";
+                if (lastDisplayedMessageIndex >= 0)
+                    menuReplyOption = "'R' to reply, ";
+                String command = readString("Enter " + menuReplyOption + "message number to read, 'L' to list, 'W' to write a new message, 'Q' to quit");
 //                in.nextLine().trim();
                 if (command.equalsIgnoreCase("q"))
                     return;
                 else if (command.equalsIgnoreCase("l"))
                     messages = listMessages(emailClient);
                 else if (command.equalsIgnoreCase("w"))
-                    send(emailClient);
-                else if (command.matches("^[0-9]+$"))
-                    displayMessage(messages.get(Integer.parseInt(command) - 1));
-                else
+                    send(emailClient, null);
+                else if (command.equalsIgnoreCase("r") && lastDisplayedMessageIndex >= 0)
+                    send(emailClient, messages.get(lastDisplayedMessageIndex));
+                else if (command.matches("^[0-9]+$")) {
+                    int messageToDisplay = Integer.parseInt(command) - 1;
+                    displayMessage(messages.get(messageToDisplay));
+                    lastDisplayedMessageIndex = messageToDisplay;
+                } else
                     out.println("Invalid command");
             } catch (Exception ex) {
                 if (ex.getMessage() == null)
@@ -69,21 +77,27 @@ public final class Main {
         }
     }
 
-    private static void send(EmailClient emailClient) throws Exception {
-//        out.print("To: ");
-//        String to = in.nextLine();
-        String to = readString("To");
-//        out.print("Subject: ");
-//        String subject = in.nextLine();
-        String subject = readString("Subject");
+    private static void send(EmailClient emailClient, EmailMessage messageToReplyTo) throws Exception {
+        String to;
+        String subject;
+        if (messageToReplyTo == null) {
+            to = readString("To");
+            subject = readString("Subject");
+            
+        } else {
+            to = messageToReplyTo.getFrom();
+            subject = "Re: " + messageToReplyTo.getSubject();
+            out.printf("To: %s\nSubject: %s\n", to, subject);
+        }
+            
         out.println("Message text, terminated by a line containing a single dot:");
         String text = readText();
+        if (messageToReplyTo != null) {
+            text = text + "\n\n\n> " + messageToReplyTo.getText().trim().replace("\n", "\n> ") ;
+                    
+                    
+        }
         ArrayList<String> filePaths = new ArrayList<String>();
-//        ArrayList<String> fileNames = null;
-//        String attachmentInput = readString("Enter full filepath to attach a file (example c:\\Program Files\\file.txt)\nor \".\" to skip");
-//        if (!".".equals(attachmentInput)) {
-//            filePaths = new ArrayList<String>();
-//            fileNames = new ArrayList<String>();
         String attachmentInput;
         while ((attachmentInput = readString("Enter filepath to add file, or enter to continue)")).length() > 0) {
             filePaths.add(attachmentInput.trim());
@@ -141,9 +155,5 @@ public final class Main {
     private static String readString(String query) {
         out.print(query + ": ");
         return in.nextLine().trim();
-    }
-
-    public static void printLine(String string) {
-        out.println(string);
     }
 }
