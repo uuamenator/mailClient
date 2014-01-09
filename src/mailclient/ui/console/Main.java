@@ -68,23 +68,6 @@ public final class Main {
             return in.nextLine();
     }
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
     private static void send(EmailClient emailClient) throws Exception {
 //        out.print("To: ");
 //        String to = in.nextLine();
