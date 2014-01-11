@@ -3,6 +3,8 @@ package mailclient.core;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.activation.DataHandler;
 import javax.activation.DataSource;
 import javax.activation.FileDataSource;
@@ -18,10 +20,9 @@ public class EmailClient {
     private final Session session;
     private final Folder inbox;
 
-    
     public EmailClient(final String userEmail, final String password) throws Exception {
         this.userEmail = userEmail;
-        
+
         Properties props = new Properties();
         props.put("mail.smtp.host", "smtp.gmail.com");
         props.put("mail.imap.host", "imap.gmail.com");
@@ -46,7 +47,7 @@ public class EmailClient {
     public ArrayList<EmailMessage> listMessages() throws Exception {
         Message messages[] = inbox.getMessages();
         ArrayList<EmailMessage> result = new ArrayList<EmailMessage>();
-        for(Message message:messages) {
+        for (Message message : messages) {
             result.add(new EmailMessage(
                     addressesToString(message.getFrom()),
                     addressesToString(message.getAllRecipients()),
@@ -55,7 +56,7 @@ public class EmailClient {
         }
         return result;
     }
-    
+
     public String getUserEmail() {
         return userEmail;
     }
@@ -71,7 +72,7 @@ public class EmailClient {
             MimeBodyPart textPart = new MimeBodyPart();
             textPart.setText(message.getText());
             mimeMultipart.addBodyPart(textPart);
-            
+
             for (int i = 0; i < filePaths.size(); i++) {
                 MimeBodyPart mimeBodyPart = new MimeBodyPart();
                 String filePath = filePaths.get(i);
@@ -82,23 +83,24 @@ public class EmailClient {
             }
             mimeMessage.setContent(mimeMultipart);
         }
-        Transport.send(mimeMessage);        
+        Transport.send(mimeMessage);
     }
 
-    
     private String addressesToString(Address[] addresses) {
         StringBuilder buffer = new StringBuilder();
         for (int i = 0; i < addresses.length; i++) {
-            if (i != 0)
+            if (i != 0) {
                 buffer.append(", ");
+            }
             buffer.append(((InternetAddress) addresses[i]).getAddress());
         }
         return buffer.toString();
     }
 
     private String getContentText(Object contentObject) throws Exception {
-        if (contentObject instanceof String)
+        if (contentObject instanceof String) {
             return contentObject.toString();
+        }
         if (contentObject instanceof Multipart) {
             BodyPart clearTextPart = null;
             BodyPart htmlTextPart = null;
@@ -122,5 +124,13 @@ public class EmailClient {
         }
         return "Error, this email doesn't contain text.";
     }
-    
+
+    public int MessageCountNumber() {
+        try {
+            int Number = inbox.getMessageCount();
+            return Number;
+        } catch (MessagingException e) {
+            return -1;
+        }
+    }
 }

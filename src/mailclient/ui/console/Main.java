@@ -29,29 +29,32 @@ public final class Main {
             try {
 //                out.print("Enter message number to read, 'l' to list, 'w' to write a new message, 'q' to quit: ");
                 String menuReplyOption = "";
-                if (lastDisplayedMessageIndex >= 0)
+                if (lastDisplayedMessageIndex >= 0) {
                     menuReplyOption = "'R' to reply, ";
+                }
                 String command = readString("Enter " + menuReplyOption + "message number to read, 'L' to list, 'W' to write a new message, 'Q' to quit");
 //                in.nextLine().trim();
-                if (command.equalsIgnoreCase("q"))
+                if (command.equalsIgnoreCase("q")) {
                     return;
-                else if (command.equalsIgnoreCase("l"))
+                } else if (command.equalsIgnoreCase("l")) {
                     messages = listMessages(emailClient);
-                else if (command.equalsIgnoreCase("w"))
+                } else if (command.equalsIgnoreCase("w")) {
                     send(emailClient, null);
-                else if (command.equalsIgnoreCase("r") && lastDisplayedMessageIndex >= 0)
+                } else if (command.equalsIgnoreCase("r") && lastDisplayedMessageIndex >= 0) {
                     send(emailClient, messages.get(lastDisplayedMessageIndex));
-                else if (command.matches("^[0-9]+$")) {
+                } else if (command.matches("^[0-9]+$")) {
                     int messageToDisplay = Integer.parseInt(command) - 1;
                     displayMessage(messages.get(messageToDisplay));
                     lastDisplayedMessageIndex = messageToDisplay;
-                } else
+                } else {
                     out.println("Invalid command");
+                }
             } catch (Exception ex) {
-                if (ex.getMessage() == null)
+                if (ex.getMessage() == null) {
                     out.println(ex.getClass().getCanonicalName());
-                else
+                } else {
                     out.println("Error: " + ex.getMessage());
+                }
             }
         }
 //        displayMessage(messages.get(0));
@@ -83,19 +86,19 @@ public final class Main {
         if (messageToReplyTo == null) {
             to = readString("To");
             subject = readString("Subject");
-            
+
         } else {
             to = messageToReplyTo.getFrom();
             subject = "Re: " + messageToReplyTo.getSubject();
             out.printf("To: %s\nSubject: %s\n", to, subject);
         }
-            
+
         out.println("Message text, terminated by a line containing a single dot:");
         String text = readText();
         if (messageToReplyTo != null) {
-            text = text + "\n\n\n> " + messageToReplyTo.getText().trim().replace("\n", "\n> ") ;
-                    
-                    
+            text = text + "\n\n\n> " + messageToReplyTo.getText().trim().replace("\n", "\n> ");
+
+
         }
         ArrayList<String> filePaths = new ArrayList<String>();
         String attachmentInput;
@@ -118,27 +121,110 @@ public final class Main {
         return buffer.toString();
     }
 
+//    private static ArrayList<EmailMessage> listMessages(EmailClient emailClient) throws Exception {
+//        out.print("Listing mail...");
+//        ArrayList<EmailMessage> messages = emailClient.listMessages();
+//        out.println();
+//        if (messages.isEmpty()) {
+//            out.println("You have no mail.");
+//            return messages;
+//        }
+//        out.println("#   From                                     Subject");
+//        out.println("--- ---------------------------------------- --------------------------");
+//        for (int i = 0; i < messages.size(); i++) {
+//            EmailMessage message = messages.get(i);
+//            String subject = message.getSubject();
+//            if (subject == null) {
+//                subject = "(no subject)";
+//            }
+////            subject = subject.substring(0, 50);               sdelat' if string > x...
+//            out.printf("%-3d %-40s %s\n", i + 1, message.getFrom(), subject);
+//        }
+//        out.println("-----------------------------------------------------------------------");
+//        return messages;
+//    }
     private static ArrayList<EmailMessage> listMessages(EmailClient emailClient) throws Exception {
-        out.print("Listing mail...");
         ArrayList<EmailMessage> messages = emailClient.listMessages();
-        out.println();
         if (messages.isEmpty()) {
             out.println("You have no mail.");
             return messages;
         }
-        out.println("#   From                                     Subject");
-        out.println("--- ---------------------------------------- --------------------------");
-        for (int i = 0; i < messages.size(); i++) {
-            EmailMessage message = messages.get(i);
-            String subject = message.getSubject();
-            if (subject == null) {
-                subject = "(no subject)";
-            }
-//            subject = subject.substring(0, 50);               sdelat' if string > x...
-            out.printf("%-3d %-40s %s\n", i + 1, message.getFrom(), subject);
+        int howManyM = emailClient.MessageCountNumber();
+        out.print("\n You have total " + howManyM + " messages. \n");
+        int first = howManyM - 20;
+        if (first < 0) {
+            first = 0;
         }
-        out.println("-----------------------------------------------------------------------");
-        return messages;
+        if (howManyM > 20) {
+            out.print("\n Now will be shown not more than 20 earliest messages.\n");
+            out.print("\n Do you want to change that number? (y/n)\n");
+            String yesNO = in.nextLine();
+            if (yesNO.equalsIgnoreCase("y")) {
+                out.print("\n Type the number of messages you want to see. \n");
+                String firstString = in.nextLine();
+                try {
+                    if (firstString != null) {
+                        first = Integer.parseInt(firstString);
+                        if (howManyM < first) {
+                            first = howManyM;
+                        }
+                    }
+                    out.println("#   From                                     Subject");
+                    out.println("----- ---------------------------------------- --------------------------");
+                    for (int i = howManyM - first; i < messages.size(); i++) {
+                        EmailMessage message = messages.get(i);
+                        String subject = message.getSubject();
+                        if (subject == null) {
+                            subject = "(no subject)";
+                        }
+                        out.printf("%-5d %-40s %s\n", i + 1, message.getFrom(), subject);
+                    }
+                    out.println("-----------------------------------------------------------------------");
+                } catch (NumberFormatException e) {
+                    out.print("\n Your input isn't a nummber! \n");
+                    listMessages(emailClient);
+                }
+            } else if (yesNO.equalsIgnoreCase("n")) {
+                try {
+                    out.println("#   From                                     Subject");
+                    out.println("----- ---------------------------------------- --------------------------");
+                    for (int i = howManyM - first; i < messages.size(); i++) {
+                        EmailMessage message = messages.get(i);
+                        String subject = message.getSubject();
+                        if (subject == null) {
+                            subject = "(no subject)";
+                        }
+                        out.printf("%-5d %-40s %s\n", i + 1, message.getFrom(), subject);
+                    }
+                    out.println("-----------------------------------------------------------------------");
+                } catch (NumberFormatException e) {
+                    out.print("\n Your input isn't a nummber! \n");
+                    listMessages(emailClient);
+                }
+            } else {
+                out.print("\n Your input is wrong! \n");
+                listMessages(emailClient);
+            }
+            return messages;
+        } else {
+            out.println();
+            if (messages.isEmpty()) {
+                out.println("You have no mail.");
+                return messages;
+            }
+            out.println("#   From                                     Subject");
+            out.println("----- ---------------------------------------- --------------------------");
+            for (int i = 0; i < messages.size(); i++) {
+                EmailMessage message = messages.get(i);
+                String subject = message.getSubject();
+                if (subject == null) {
+                    subject = "(no subject)";
+                }
+                out.printf("%-5d %-40s %s\n", i + 1, message.getFrom(), subject);
+            }
+            out.println("-----------------------------------------------------------------------");
+            return messages;
+        }
     }
 
     private static void displayMessage(EmailMessage message) {
