@@ -122,7 +122,7 @@ public final class Main {
             filePaths.add(attachmentInput.trim());
         }
         out.print("Sending message...");
-        emailClient.sendMessage(new EmailMessage(emailClient.getUserEmail(), to, subject, text), filePaths);
+        emailClient.sendMessage(new EmailMessage(emailClient.getUserEmail(), to, subject, text, false), filePaths);
         out.println(" Message sent.");
     }
 
