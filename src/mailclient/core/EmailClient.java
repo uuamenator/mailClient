@@ -159,7 +159,9 @@ public class EmailClient {
                     message.getSubject(),
                     getContentText(message.getContent()),
                     message.isSet(Flags.Flag.SEEN),
-                    message.getMessageNumber()));
+                    message.getMessageNumber(),
+                    message.getSentDate()
+                    ));
         }
         return result;
     }
