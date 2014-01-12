@@ -1,12 +1,9 @@
 package mailclient.core;
 
-import com.sun.mail.imap.IMAPFolder;
-import com.sun.mail.imap.SortTerm;
 import java.io.File;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Properties;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.activation.DataHandler;
 import javax.activation.DataSource;
 import javax.activation.FileDataSource;
@@ -126,7 +123,7 @@ public class EmailClient {
                 return html;
             }
         }
-        return "Error, this email doesn't contain text.";
+        return null;
     }
 
     public int MessageCountNumber() {
@@ -161,10 +158,47 @@ public class EmailClient {
                     addressesToString(message.getAllRecipients()),
                     message.getSubject(),
                     getContentText(message.getContent()),
-                    message.isSet(Flags.Flag.SEEN)));
+                    message.isSet(Flags.Flag.SEEN),
+                    message.getMessageNumber()));
         }
         return result;
     }
+
+
+    private String getMessageText(Message message) throws Exception {
+        Object content = message.getContent();
+        String result = null;
+        if (content instanceof String) {
+            result = (String) content;
+        } else if (content instanceof Multipart) {
+            Multipart multipart = (Multipart) content;
+            result = getMultipartText(multipart);
+        }
+        return result;
+    }
+
+    private String getMultipartText(Multipart multipart) throws Exception {
+        int count = multipart.getCount();
+        String result = null;
+        Message message;
+        for (int i = 0; i < count; i++) {
+            BodyPart bodypart = multipart.getBodyPart(i);
+            Object content = bodypart.getContent();
+            if (content instanceof String)
+                result = (String) content;
+            else if (content instanceof InputStream)
+                continue;
+            else if (content instanceof Multipart)
+                result = getMultipartText ((Multipart) content);
+            else if (content instanceof Message) {
+                message = (Message) content;
+                result = getMessageText(message);
+            }
+        }
+        return result;
+        
+    }
+
 }
 
 
@@ -211,3 +245,8 @@ public class EmailClient {
 //            }  
 //        }  
 //    }  
+
+
+// TODO
+// 
+
