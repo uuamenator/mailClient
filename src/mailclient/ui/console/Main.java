@@ -122,7 +122,7 @@ public final class Main {
             filePaths.add(attachmentInput.trim());
         }
         out.print("Sending message...");
-        emailClient.sendMessage(new EmailMessage(emailClient.getUserEmail(), to, subject, text, false), filePaths);
+        emailClient.sendMessage(new EmailMessage(emailClient.getUserEmail(), to, subject, text), filePaths);
         out.println(" Message sent.");
     }
 
@@ -230,7 +230,10 @@ public final class Main {
             subject = "(no subject)";
         out.println("Subject: " + subject);
         out.println();
-        out.println(message.getText().trim());
+        if (message.getText() == null){
+            out.println("no text");
+        } else
+            out.println(message.getText().trim());
         out.println("-----------------------------------------------------------------------");
 
     }
