@@ -257,7 +257,7 @@ public final class Main {
             out.println("You have no mail.");
             return messages;
         }
-        out.println("#   From                                     Subject");
+        out.println("#   Date  From                                     Subject");
         out.println("--- ----- ---------------------------------------- --------------------------");
         for (int i = 0; i < messages.size(); i++) {
             EmailMessage message = messages.get(i);
@@ -266,13 +266,13 @@ public final class Main {
                 subject = "(no subject)";
             }
 //            subject = subject.substring(0, 50);               sdelat' if string > x...
+            SimpleDateFormat dateformatJava = new SimpleDateFormat("dd-MM-yyyy");
+            String messageDate = dateformatJava.format(message.getData());
+            messageDate = messageDate.substring(0,5);
             if (message.isSeen()) 
-                out.printf("%-3d %-40s %s\n", i + 1, message.getFrom(), subject);
+                out.printf("%-3d %-5s %-40s %s\n", i + 1, messageDate, message.getFrom(), subject);
             else {
                 out.print("\033[1m");
-                SimpleDateFormat dateformatJava = new SimpleDateFormat("dd-MM-yyyy");
-                String messageDate = dateformatJava.format(message.getData());
-                messageDate = messageDate.substring(0,5);
                 out.printf("%-3d %-5s %-40s %s\n", i + 1, messageDate, message.getFrom(), subject);
                 out.print("\033[0m");
             }
