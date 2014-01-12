@@ -1,5 +1,7 @@
 package mailclient.core;
 
+import com.sun.mail.imap.IMAPFolder;
+import com.sun.mail.imap.SortTerm;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Properties;
@@ -13,6 +15,7 @@ import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
+import javax.mail.search.BodyTerm;
 
 public class EmailClient {
 
@@ -44,17 +47,18 @@ public class EmailClient {
         inbox.open(Folder.READ_ONLY);
     }
 
-    public ArrayList<EmailMessage> listMessages() throws Exception {
-        Message messages[] = inbox.getMessages();
-        ArrayList<EmailMessage> result = new ArrayList<EmailMessage>();
-        for (Message message : messages) {
-            result.add(new EmailMessage(
-                    addressesToString(message.getFrom()),
-                    addressesToString(message.getAllRecipients()),
-                    message.getSubject(),
-                    getContentText(message.getContent())));
-        }
-        return result;
+    public ArrayList<EmailMessage> listMessages(String searchKey) throws Exception {
+        Message messages[];
+        BodyTerm bodyTerm = new BodyTerm(searchKey);
+        if (searchKey == null){
+            int messageCount = inbox.getMessageCount();
+            if (messageCount > 20) {
+                messages = inbox.getMessages(messageCount - 19, messageCount);
+            } else
+            messages = inbox.getMessages();
+        } else
+            messages = inbox.search(bodyTerm);
+        return convertMessageToEmailMessage(messages);
     }
 
     public String getUserEmail() {
@@ -133,4 +137,77 @@ public class EmailClient {
             return -1;
         }
     }
+    
+//    public ArrayList<EmailMessage> searchMessagesFor(String searchKey) throws Exception {
+//        BodyTerm bodyTerm = new BodyTerm(searchKey);
+////        
+////    AddressStringTerm - This abstract class implements string comparisons for Message addresses.
+////    BodyTerm - This class implements searches on a message body.
+////    FromStringTerm - This class implements string comparisons for the From Address header.
+////    HeaderTerm - This class implements comparisons for Message headers.
+////    MessageIDTerm - This term models the RFC822 "MessageId" - a message-id for Internet messages that is supposed to be unique per message.
+////    RecipientStringTerm - This class implements string comparisons for the Recipient Address headers.
+////    SubjectTerm - This class implements comparisons for the message Subject header.
+//      
+//        Message[] messages = inbox.search(bodyTerm);
+//        return convertMessageToEmailMessage(messages);
+//    }
+
+    private ArrayList<EmailMessage> convertMessageToEmailMessage(Message[] messages) throws Exception{
+        ArrayList<EmailMessage> result = new ArrayList<EmailMessage>();
+        for (Message message : messages) {
+            result.add(new EmailMessage(
+                    addressesToString(message.getFrom()),
+                    addressesToString(message.getAllRecipients()),
+                    message.getSubject(),
+                    getContentText(message.getContent()),
+                    message.isSet(Flags.Flag.SEEN)));
+        }
+        return result;
+    }
 }
+
+
+
+//    public void handleMessage(Message message)  
+//    {  
+//        Object content = message.getContent();  
+//        if (content instanceof String)  
+//        {  
+//            // handle string  
+//        }  
+//        else if (content instanceof Multipart)  
+//        {  
+//            Multipart mp = (Multipart)content;  
+//            handleMultipart(mp);  
+//            // handle multi part  
+//        }  
+//    }  
+//      
+//    public void handleMultipart(Multipart mp)  
+//    {  
+//        int count = mp.getCount();  
+//        for (int i = 0; i < count; i++)  
+//        {  
+//            BodyPart bp = mp.getBodyPart(i);  
+//            Object content = bp.getContent();  
+//            if (content instanceof String)  
+//            {  
+//                // handle string  
+//            }  
+//            else if (content instanceof InputStream)  
+//            {  
+//                // handle input stream  
+//            }  
+//            else if (content instanceof Message)  
+//            {  
+//                Message message = (Message)content);  
+//                handleMessage(message);  
+//            }  
+//            else if (content instanceof Multipart)  
+//            {  
+//                Multipart mp2 = (Multipart)content;  
+//                handleMultipart(mp2);  
+//            }  
+//        }  
+//    }  
