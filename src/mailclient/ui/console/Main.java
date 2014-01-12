@@ -1,7 +1,9 @@
 package mailclient.ui.console;
 
 import java.io.PrintStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.Scanner;
 import mailclient.core.EmailAddress;
 import mailclient.core.EmailClient;
@@ -256,7 +258,7 @@ public final class Main {
             return messages;
         }
         out.println("#   From                                     Subject");
-        out.println("--- ---------------------------------------- --------------------------");
+        out.println("--- ----- ---------------------------------------- --------------------------");
         for (int i = 0; i < messages.size(); i++) {
             EmailMessage message = messages.get(i);
             String subject = message.getSubject();
@@ -268,7 +270,10 @@ public final class Main {
                 out.printf("%-3d %-40s %s\n", i + 1, message.getFrom(), subject);
             else {
                 out.print("\033[1m");
-                out.printf("%-3d %-40s %s\n", i + 1, message.getFrom(), subject);
+                SimpleDateFormat dateformatJava = new SimpleDateFormat("dd-MM-yyyy");
+                String messageDate = dateformatJava.format(message.getData());
+                messageDate = messageDate.substring(0,5);
+                out.printf("%-3d %-5s %-40s %s\n", i + 1, messageDate, message.getFrom(), subject);
                 out.print("\033[0m");
             }
                 
