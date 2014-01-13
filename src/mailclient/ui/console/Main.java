@@ -224,6 +224,8 @@ public final class Main {
 //    }
 
     private static void displayMessage(EmailMessage message) {
+        SimpleDateFormat dateformatJava = new SimpleDateFormat("dd-MM-yyyy");
+        String messageDate = dateformatJava.format(message.getData());
         out.println("-----------------------------------------------------------------------");
         out.println("From:    " + message.getFrom());
         out.println("To:      " + message.getTo());
@@ -231,6 +233,7 @@ public final class Main {
         if (subject == null)
             subject = "(no subject)";
         out.println("Subject: " + subject);
+        out.println("Date: " + messageDate);
         out.println();
         if (message.getText() == null){
             out.println("no text");
