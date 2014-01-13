@@ -200,6 +200,30 @@ public class EmailClient {
         return result;
         
     }
+    
+    public void markMessageAsRead(int messageIndexInFolder) throws Exception {
+        inbox.close(false);
+        inbox.open(Folder.READ_WRITE);
+        Message msg = inbox.getMessage(messageIndexInFolder);
+        Object content = msg.getContent();
+        if (content instanceof Multipart) 
+            readAndDiscardMultipart((Multipart)content);
+//        MimeMessage source = (MimeMessage) inbox.getMessage(messageIndexInFolder);
+//        MimeMessage copy = new MimeMessage(source);
+//        inbox.getMessage(messageIndexInFolder).getContent();
+        inbox.close(false);
+        inbox.open(Folder.READ_ONLY);
+    }
+
+    private void readAndDiscardMultipart(Multipart multipart) throws Exception{
+        for (int i=0; i<multipart.getCount(); i++) {
+            BodyPart bodyPart = multipart.getBodyPart(i);
+            Object content = bodyPart.getContent();
+            if (content instanceof Multipart) {
+                readAndDiscardMultipart((Multipart)content);
+            }
+        }
+    }
 
 }
 

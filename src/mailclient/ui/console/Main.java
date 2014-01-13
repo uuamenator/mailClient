@@ -62,7 +62,7 @@ public final class Main {
                     send(emailClient, messages.get(lastDisplayedMessageIndex));
                 } else if (command.matches("^[0-9]+$")) {
                     int messageToDisplay = Integer.parseInt(command) - 1;
-                    displayMessage(messages.get(messageToDisplay));
+                    displayMessage(messages.get(messageToDisplay), emailClient);
                     lastDisplayedMessageIndex = messageToDisplay;
                 } else {
                     out.println("Invalid command");
@@ -223,23 +223,24 @@ public final class Main {
 //        }
 //    }
 
-    private static void displayMessage(EmailMessage message) {
+    private static void displayMessage(EmailMessage message, EmailClient emailClient) throws Exception {
         SimpleDateFormat dateformatJava = new SimpleDateFormat("dd-MM-yyyy");
         String messageDate = dateformatJava.format(message.getData());
         out.println("-----------------------------------------------------------------------");
+        out.println("Date:    " + messageDate);
         out.println("From:    " + message.getFrom());
         out.println("To:      " + message.getTo());
         String subject = message.getSubject();
         if (subject == null)
             subject = "(no subject)";
         out.println("Subject: " + subject);
-        out.println("Date: " + messageDate);
         out.println();
         if (message.getText() == null){
             out.println("no text");
         } else
             out.println(message.getText().trim());
         out.println("-----------------------------------------------------------------------");
+        emailClient.markMessageAsRead(message.getMessageNumberInFolder());
 
     }
 
