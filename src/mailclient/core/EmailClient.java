@@ -486,7 +486,7 @@ public class EmailClient {
         ArrayList<String> fileNamesSizes = getAttachmentFilenamesFromMessageIndex(messageNumberInFolder);
         if (toSave != 0) {
             InputStream is = fileInputStreams.get(toSave);
-            File f = new File(folder + fileNamesSizes.get(toSave * 2));
+            File f = new File(fileNamesSizes.get(toSave * 2));
             FileOutputStream fos = new FileOutputStream(f);
             byte[] buf = new byte[4096];
             int bytesRead;
@@ -497,7 +497,7 @@ public class EmailClient {
         } else if (toSave == 0) {
             for (int i = 0; i < fileInputStreams.size(); i++) {
                 InputStream is = fileInputStreams.get(i);
-                File f = new File(folder + fileNamesSizes.get(i * 2));
+                File f = new File(fileNamesSizes.get(i * 2));
                 FileOutputStream fos = new FileOutputStream(f);
                 byte[] buf = new byte[4096];
                 int bytesRead;

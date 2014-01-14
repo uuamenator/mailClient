@@ -368,8 +368,8 @@ public final class Main {
     }
 
     private static void saveFile(EmailClient emailClient, int messageNumberInFolder, int toSave) throws Exception{
-        String folder = readString("Save in folder");
-        emailClient.saveFile(folder, messageNumberInFolder, toSave);
+//        String folder = readString("Save in folder");
+        emailClient.saveFile(null, messageNumberInFolder, toSave);
     }
     
 }
