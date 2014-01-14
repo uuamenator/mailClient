@@ -1,6 +1,7 @@
 package mailclient.core;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -205,7 +206,8 @@ public class EmailClient {
                     getMessageText(message),
                     message.isSet(Flags.Flag.SEEN),
                     message.getMessageNumber(),
-                    message.getSentDate()
+                    message.getSentDate(),
+                    messageHasAttachments(message)
                     ));
         }
         return result;
@@ -262,33 +264,33 @@ public class EmailClient {
             return result;
     }
 
-    private String getContentText(Object contentObject) throws Exception {
-        if (contentObject instanceof String) {
-            return contentObject.toString();
-        }
-        if (contentObject instanceof Multipart) {
-            BodyPart clearTextPart = null;
-            BodyPart htmlTextPart = null;
-            Multipart content = (Multipart) contentObject;
-            for (int i = 0; i < content.getCount(); i++) {
-                BodyPart part = content.getBodyPart(i);
-                if (part.isMimeType("text/plain")) {
-                    clearTextPart = part;
-                    break;
-                } else if (part.isMimeType("text/html")) {
-                    htmlTextPart = part;
-                }
-            }
-
-            if (clearTextPart != null) {
-                return clearTextPart.getContent().toString();
-            } else if (htmlTextPart != null) {
-                String html = htmlTextPart.getContent().toString();
-                return html;
-            }
-        }
-        return null;
-    }
+//    private String getContentText(Object contentObject) throws Exception {
+//        if (contentObject instanceof String) {
+//            return contentObject.toString();
+//        }
+//        if (contentObject instanceof Multipart) {
+//            BodyPart clearTextPart = null;
+//            BodyPart htmlTextPart = null;
+//            Multipart content = (Multipart) contentObject;
+//            for (int i = 0; i < content.getCount(); i++) {
+//                BodyPart part = content.getBodyPart(i);
+//                if (part.isMimeType("text/plain")) {
+//                    clearTextPart = part;
+//                    break;
+//                } else if (part.isMimeType("text/html")) {
+//                    htmlTextPart = part;
+//                }
+//            }
+//
+//            if (clearTextPart != null) {
+//                return clearTextPart.getContent().toString();
+//            } else if (htmlTextPart != null) {
+//                String html = htmlTextPart.getContent().toString();
+//                return html;
+//            }
+//        }
+//        return null;
+//    }
     
     
     public void markMessageAsRead(int messageIndexInFolder) throws Exception {
@@ -388,54 +390,137 @@ public class EmailClient {
     }
         
     
+    public static boolean messageHasAttachments(Message message) throws Exception {
+        Object content = message.getContent();
+        boolean result = false;
+        if (content instanceof String) {
+            result = false;
+        } else if (content instanceof Multipart) {
+            Multipart multipart = (Multipart) content;
+            result = multipartHasAttachments(multipart);
+        }
+        return result;
+    } 
+    
+    private static boolean multipartHasAttachments(Multipart multipart) throws Exception{
+        boolean result = false;
+        Message message;
+                
+        for (int i = 0; i < multipart.getCount(); i++) {
+            BodyPart bodyPart = multipart.getBodyPart(i);
+            Object content = bodyPart.getContent();
+            if (content instanceof Multipart) {
+                if (multipartHasAttachments((Multipart)content))
+                    return true;
+            } else if (content instanceof Message) {
+                message = (Message) content;
+                if (messageHasAttachments(message))
+                    return true;
+            } else if (Part.ATTACHMENT.equalsIgnoreCase(bodyPart.getDisposition()) &&
+                   !"".equals(bodyPart.getFileName())) {
+                return true; // dealing with attachments only
+                
+            } 
+        }            
+        
+        return result;
+    }
+    
+    public ArrayList<String> getAttachmentFilenamesFromMessageIndex(int messageIndex) throws Exception {
+        ArrayList<String> fileNamesSizes;
+        Multipart multipart = (Multipart) inbox.getMessage(messageIndex).getContent();
+        fileNamesSizes = getAttachmentFilenamesFromMultipart(multipart);
+        return fileNamesSizes;
+    }
+    
+    private ArrayList<String> getAttachmentFilenamesFromMultipart(Multipart multipart) throws Exception {    
+        ArrayList<String> fileNamesSizes = new ArrayList<String>();
+//        ArrayList<String> fileNameSizesBranch = new ArrayList<String>();
+        for (int i = 0; i < multipart.getCount(); i++) {
+            BodyPart bodyPart = multipart.getBodyPart(i);
+//            if (bodyPart.getContent() instanceof Multipart)
+//                 fileNameSizesBranch = getAttachmentFilenamesFromMultipart((Multipart) bodyPart.getContent());
+//            if (bodyPart.getContent() instanceof InputStream) {
+                if(!Part.ATTACHMENT.equalsIgnoreCase(bodyPart.getDisposition()) &&
+                           "".equals(bodyPart.getFileName()))
+                    continue; // dealing with attachments only
+                fileNamesSizes.add(bodyPart.getFileName());
+                fileNamesSizes.add(String.valueOf(bodyPart.getSize()));
+//            }
+//            for (int tempArrayIndex = 0; tempArrayIndex < fileNameSizesBranch.size(); tempArrayIndex += 2){
+//                fileNamesSizes.add(fileNameSizesBranch.get(tempArrayIndex));
+//                fileNamesSizes.add(fileNameSizesBranch.get(tempArrayIndex+1));
+//            }
+        }
+        return fileNamesSizes;
+    }
+
+    public ArrayList<InputStream> getInputStreamsFromMessageIndex(int messageIndex) throws Exception {
+        ArrayList<InputStream> fileInputStreams;
+        Multipart multipart = (Multipart) inbox.getMessage(messageIndex).getContent();
+        fileInputStreams = getInputStreamsFromMultipart(multipart);
+        return fileInputStreams;
+    }
+        
+    private ArrayList<InputStream> getInputStreamsFromMultipart(Multipart multipart) throws Exception {
+        ArrayList<InputStream> fileInputStreams = new ArrayList<InputStream>();
+//        ArrayList<InputStream> fileInputStreamsBranch = new ArrayList<InputStream>();
+        for (int i = 0; i < multipart.getCount(); i++) {
+            BodyPart bodyPart = multipart.getBodyPart(i);
+//            if (bodyPart.getContent() instanceof Multipart)
+//                 fileInputStreamsBranch = getInputStreamsFromMultipart((Multipart) bodyPart.getContent());
+//            if (bodyPart.getContent() instanceof InputStream) {
+                if(!Part.ATTACHMENT.equalsIgnoreCase(bodyPart.getDisposition()) &&
+                           "".equals(bodyPart.getFileName())) 
+                    continue; // dealing with attachments only
+                fileInputStreams.add(bodyPart.getInputStream());
+//            }
+//            for (int tempArrayIndex = 0; tempArrayIndex < fileInputStreamsBranch.size(); tempArrayIndex += 2)
+//                 fileInputStreams.add(fileInputStreamsBranch.get(tempArrayIndex));
+        }
+        return fileInputStreams;
+    }
+
+    public void saveFile(String folder, int messageNumberInFolder, int toSave) throws Exception {
+        ArrayList<InputStream> fileInputStreams = getInputStreamsFromMessageIndex(messageNumberInFolder);
+        ArrayList<String> fileNamesSizes = getAttachmentFilenamesFromMessageIndex(messageNumberInFolder);
+        if (toSave != 0) {
+            InputStream is = fileInputStreams.get(toSave);
+            File f = new File(folder + fileNamesSizes.get(toSave * 2));
+            FileOutputStream fos = new FileOutputStream(f);
+            byte[] buf = new byte[4096];
+            int bytesRead;
+            while((bytesRead = is.read(buf))!=-1) {
+                fos.write(buf, 0, bytesRead);
+            }
+            fos.close();
+        } else if (toSave == 0) {
+            for (int i = 0; i < fileInputStreams.size(); i++) {
+                InputStream is = fileInputStreams.get(i);
+                File f = new File(folder + fileNamesSizes.get(i * 2));
+                FileOutputStream fos = new FileOutputStream(f);
+                byte[] buf = new byte[4096];
+                int bytesRead;
+                while((bytesRead = is.read(buf))!=-1) {
+                    fos.write(buf, 0, bytesRead);
+                }
+                fos.close();
+            }
+        }
+    }
+
+//            InputStream is = bodyPart.getInputStream();
+//            File f = new File("/tmp/" + bodyPart.getFileName());
+//            FileOutputStream fos = new FileOutputStream(f);
+//            byte[] buf = new byte[4096];
+//            int bytesRead;
+//            while((bytesRead = is.read(buf))!=-1) {
+//                fos.write(buf, 0, bytesRead);
+//            }
+//            fos.close();
+//            attachments.add(f);
+    
 }
 
 
-
-//    public void handleMessage(Message message)  
-//    {  
-//        Object content = message.getContent();  
-//        if (content instanceof String)  
-//        {  
-//            // handle string  
-//        }  
-//        else if (content instanceof Multipart)  
-//        {  
-//            Multipart mp = (Multipart)content;  
-//            handleMultipart(mp);  
-//            // handle multi part  
-//        }  
-//    }  
-//      
-//    public void handleMultipart(Multipart mp)  
-//    {  
-//        int count = mp.getCount();  
-//        for (int i = 0; i < count; i++)  
-//        {  
-//            BodyPart bp = mp.getBodyPart(i);  
-//            Object content = bp.getContent();  
-//            if (content instanceof String)  
-//            {  
-//                // handle string  
-//            }  
-//            else if (content instanceof InputStream)  
-//            {  
-//                // handle input stream  
-//            }  
-//            else if (content instanceof Message)  
-//            {  
-//                Message message = (Message)content);  
-//                handleMessage(message);  
-//            }  
-//            else if (content instanceof Multipart)  
-//            {  
-//                Multipart mp2 = (Multipart)content;  
-//                handleMultipart(mp2);  
-//            }  
-//        }  
-//    }  
-
-
-// TODO
-// 
 

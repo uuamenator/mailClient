@@ -11,8 +11,9 @@ public class EmailMessage {
     private final boolean seen;
     private int messageNumberInFolder = 0;
     private Date date;
+    private boolean hasAttachments;
 
-    public EmailMessage(String from, String to, String subject, String text, boolean seen, int messageNumberInFolder, Date date) {
+    public EmailMessage(String from, String to, String subject, String text, boolean seen, int messageNumberInFolder, Date date, boolean hasAttachments) {
         this.from = from;
         this.to = to;
         this.subject = subject;
@@ -20,6 +21,7 @@ public class EmailMessage {
         this.seen = seen;
         this.messageNumberInFolder = messageNumberInFolder;
         this.date = date;
+        this.hasAttachments = hasAttachments;
     }
 
     public EmailMessage(String from, String to, String subject, String text, boolean seen) {
@@ -60,6 +62,10 @@ public class EmailMessage {
     
     public Date getDate() {
         return date;
+    }
+    
+    public boolean hasAttachments(){
+        return hasAttachments;
     }
     
 }

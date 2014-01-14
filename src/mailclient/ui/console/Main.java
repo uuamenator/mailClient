@@ -82,8 +82,14 @@ public final class Main {
                         messageToDisplay = Integer.parseInt(command) - emailClient.getListingIndexFrom();
                     displayMessage(messages.get(messageToDisplay), emailClient);
                     lastDisplayedMessageIndex = messageToDisplay;
+                    String attachmentHandle = readString("Enter file number to save it, 'a' to save all or enter to continue");
+                    if (attachmentHandle.matches("^[0-9]+$")) 
+                        saveFile(emailClient, messages.get(messageToDisplay).getMessageNumberInFolder(), Integer.parseInt(attachmentHandle) - 1);
+                    else if ("a".equalsIgnoreCase(attachmentHandle))
+                        saveFile(emailClient, messages.get(messageToDisplay).getMessageNumberInFolder(), 0);
                 } else 
                     out.println("Invalid command");
+            
             } catch (Exception ex) {
                 if (ex.getMessage() == null) {
                     out.println(ex.getClass().getCanonicalName());
@@ -257,6 +263,17 @@ public final class Main {
         } else
             out.println(message.getText().trim());
         out.println("-----------------------------------------------------------------------");
+        if (message.hasAttachments()){
+            ArrayList<String> fileNamesSizes = emailClient.getAttachmentFilenamesFromMessageIndex(message.getMessageNumberInFolder());
+            out.println("Attachment(s):");
+            out.println("#  Filename        Size");
+            out.println("-- --------------- ---------------");
+            for (int i = 0; i < fileNamesSizes.size()/2; i+=2) {
+                out.printf("%-2d %-15s %-15sb\n", i + 1, fileNamesSizes.get(i), fileNamesSizes.get(i+1));
+            }
+            out.println("----------------------------------");
+
+        }
         emailClient.markMessageAsRead(message.getMessageNumberInFolder());
 
     }
@@ -279,8 +296,8 @@ public final class Main {
             return messages;
         } else
             emailClient.emailSort(messages);
-        out.println("#   Date  From                                        Subject");
-        out.println("--- ----- ------------------------------------------- --------------------------");
+        out.println("#   Date  A From                                        Subject");
+        out.println("--- ----- - ------------------------------------------- --------------------------");
         for (int i = 0; i < messages.size(); i++) {
             EmailMessage message = messages.get(i);
             String subject = message.getSubject();
@@ -291,20 +308,24 @@ public final class Main {
             SimpleDateFormat dateformatJava = new SimpleDateFormat("dd-MM-yyyy");
             String messageDate = dateformatJava.format(message.getDate());
             messageDate = messageDate.substring(0,5);
+            String attachField = "";
+            if (messages.get(i).hasAttachments()) {
+                attachField = "F";
+            }
             if (searchFor == null){
                 if (message.isSeen()) 
-                    out.printf("%-3d %-5s %-43s %s\n", i + emailClient.getListingIndexFrom(), messageDate, message.getFrom(), subject);
+                    out.printf("%-3d %-5s %-1s %-43s %s\n", i + emailClient.getListingIndexFrom(), messageDate, attachField, message.getFrom(), subject);
                 else {
                     out.print("\033[1m");
-                    out.printf("%-3d %-5s %-43s %s\n", i + emailClient.getListingIndexFrom(), messageDate, message.getFrom(), subject);
+                    out.printf("%-3d %-5s %-1s %-43s %s\n", i + emailClient.getListingIndexFrom(), messageDate, attachField, message.getFrom(), subject);
                     out.print("\033[0m");
                 }
             } else {
                 if (message.isSeen()) 
-                    out.printf("%-3d %-5s %-43s %s\n", i + 1, messageDate, message.getFrom(), subject);
+                    out.printf("%-3d %-5s %-1s %-43s %s\n", i + 1, messageDate, attachField, message.getFrom(), subject);
                 else {
                     out.print("\033[1m");
-                    out.printf("%-3d %-5s %-43s %s\n", i + 1, messageDate, message.getFrom(), subject);
+                    out.printf("%-3d %-5s %-1s %-43s %s\n", i + 1, messageDate, attachField, message.getFrom(), subject);
                     out.print("\033[0m");
                 }
                 
@@ -344,6 +365,11 @@ public final class Main {
             emailClient.setSortBy(EmailClient.SortBy.SUBJECT_DESC);
         else
             out.println("Wrong selection. Please select from d+, d-, f+, f-, s+ and s-");
+    }
+
+    private static void saveFile(EmailClient emailClient, int messageNumberInFolder, int toSave) throws Exception{
+        String folder = readString("Save in folder");
+        emailClient.saveFile(folder, messageNumberInFolder, toSave);
     }
     
 }
