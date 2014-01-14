@@ -10,16 +10,16 @@ public class EmailMessage {
     private final String text;
     private final boolean seen;
     private int messageNumberInFolder = 0;
-    private Date data;
+    private Date date;
 
-    public EmailMessage(String from, String to, String subject, String text, boolean seen, int messageNumberInFolder, Date data) {
+    public EmailMessage(String from, String to, String subject, String text, boolean seen, int messageNumberInFolder, Date date) {
         this.from = from;
         this.to = to;
         this.subject = subject;
         this.text = text;
         this.seen = seen;
         this.messageNumberInFolder = messageNumberInFolder;
-        this.data = data;
+        this.date = date;
     }
 
     public EmailMessage(String from, String to, String subject, String text, boolean seen) {
@@ -58,8 +58,8 @@ public class EmailMessage {
     //add field = message number
     //add field = message received date
     
-    public Date getData() {
-        return data;
+    public Date getDate() {
+        return date;
     }
     
 }

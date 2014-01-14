@@ -3,6 +3,8 @@ package mailclient.core;
 import java.io.File;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Properties;
 import javax.activation.DataHandler;
 import javax.activation.DataSource;
@@ -13,12 +15,22 @@ import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeMultipart;
 import javax.mail.search.BodyTerm;
+import javax.mail.search.FromStringTerm;
+import javax.mail.search.RecipientStringTerm;
+import javax.mail.search.SubjectTerm;
 
 public class EmailClient {
 
+
+    public enum SortBy {DATE_ASC, DATE_DESC, FROM_ASC, FROM_DESC, SUBJECT_ASC, SUBJECT_DESC}
     private final String userEmail;
     private final Session session;
     private final Folder inbox;
+    private       SortBy sortBy = SortBy.DATE_ASC;
+    private       int messageCountInFolder;
+    private int listingIndexFrom; // when listMail is called, mail is extracted in interval between listingIndexFrom 
+    private int listingIndexTo;   // and listingIndexTo from Folder;
+    
 
     public EmailClient(final String userEmail, final String password) throws Exception {
         this.userEmail = userEmail;
@@ -42,22 +54,81 @@ public class EmailClient {
         store.connect("imap.gmail.com", userEmail, password); // userEmail password are ignored
         inbox = store.getFolder("Inbox");
         inbox.open(Folder.READ_ONLY);
+        this.resetListingIndexes();
     }
 
-    public ArrayList<EmailMessage> listMessages(String searchKey) throws Exception {
+    public ArrayList<EmailMessage> listMessages(String searchKey, String searchType) throws Exception {
         Message messages[];
-        BodyTerm bodyTerm = new BodyTerm(searchKey);
+        BodyTerm bodyTerm;
+        RecipientStringTerm recipientStringTerm;
+        FromStringTerm fromStringTerm;
+        SubjectTerm subjectTerm;
         if (searchKey == null){
-            int messageCount = inbox.getMessageCount();
-            if (messageCount > 20) {
-                messages = inbox.getMessages(messageCount - 19, messageCount);
-            } else
-            messages = inbox.getMessages();
-        } else
-            messages = inbox.search(bodyTerm);
+            if (messageCountInFolderChanged())
+                resetListingIndexes();
+            messages = inbox.getMessages(listingIndexFrom, listingIndexTo);
+        } else {
+            if (searchType == null) {
+                bodyTerm = new BodyTerm(searchKey.trim());
+                messages = inbox.search(bodyTerm);
+            } else if ("f".equalsIgnoreCase(searchType)) {
+                fromStringTerm = new FromStringTerm(searchKey.trim());
+                messages = inbox.search(fromStringTerm);
+            } else if ("t".equalsIgnoreCase(searchType)) {
+                recipientStringTerm = new RecipientStringTerm(Message.RecipientType.TO, searchKey.trim());
+                messages = inbox.search(recipientStringTerm);
+            } else if ("s".equalsIgnoreCase(searchType)) {
+                subjectTerm = new SubjectTerm(searchKey.trim());
+                messages = inbox.search(subjectTerm);
+            } else {
+                bodyTerm = new BodyTerm(searchKey.trim());
+                messages = inbox.search(bodyTerm);
+            }
+        }
         return convertMessageToEmailMessage(messages);
     }
 
+    private void resetListingIndexes() throws Exception {
+        listingIndexTo = messageCountInFolder = inbox.getMessageCount();
+        if (messageCountInFolder > 20) {
+            listingIndexFrom = listingIndexTo - 19;
+        } else
+            listingIndexFrom = 1;
+    }
+    
+    public void scrollListing(boolean directionIsUp) throws Exception {
+        if (messageCountInFolderChanged()) {
+            resetListingIndexes();
+        } else if (messageCountInFolder > 20) {
+            if (directionIsUp) {
+                if (listingIndexFrom - 20 >= 1) {
+                    listingIndexFrom -= 20;
+                    listingIndexTo -= 20;
+                } else {
+                    listingIndexTo -= listingIndexFrom - 1;
+                    listingIndexFrom = 1;
+                }
+                    
+            } else {
+                if (listingIndexTo +20 <= messageCountInFolder) {
+                    listingIndexTo += 20;
+                    listingIndexFrom += 20;
+                } else {
+                    listingIndexFrom += messageCountInFolder - listingIndexTo;
+                    listingIndexTo = messageCountInFolder;
+                }
+                    
+            }
+            
+        } else
+            resetListingIndexes();
+    }
+
+    private boolean messageCountInFolderChanged() throws Exception {
+        int newMessageCountInFolder = inbox.getMessageCount();
+        return messageCountInFolder != newMessageCountInFolder;
+    }
+    
     public String getUserEmail() {
         return userEmail;
     }
@@ -98,33 +169,6 @@ public class EmailClient {
         return buffer.toString();
     }
 
-    private String getContentText(Object contentObject) throws Exception {
-        if (contentObject instanceof String) {
-            return contentObject.toString();
-        }
-        if (contentObject instanceof Multipart) {
-            BodyPart clearTextPart = null;
-            BodyPart htmlTextPart = null;
-            Multipart content = (Multipart) contentObject;
-            for (int i = 0; i < content.getCount(); i++) {
-                BodyPart part = content.getBodyPart(i);
-                if (part.isMimeType("text/plain")) {
-                    clearTextPart = part;
-                    break;
-                } else if (part.isMimeType("text/html")) {
-                    htmlTextPart = part;
-                }
-            }
-
-            if (clearTextPart != null) {
-                return clearTextPart.getContent().toString();
-            } else if (htmlTextPart != null) {
-                String html = htmlTextPart.getContent().toString();
-                return html;
-            }
-        }
-        return null;
-    }
 
     public int MessageCountNumber() {
         try {
@@ -157,7 +201,8 @@ public class EmailClient {
                     addressesToString(message.getFrom()),
                     addressesToString(message.getAllRecipients()),
                     message.getSubject(),
-                    getContentText(message.getContent()),
+//                    getContentText(message.getContent()),
+                    getMessageText(message),
                     message.isSet(Flags.Flag.SEEN),
                     message.getMessageNumber(),
                     message.getSentDate()
@@ -180,12 +225,22 @@ public class EmailClient {
     }
 
     private String getMultipartText(Multipart multipart) throws Exception {
-        int count = multipart.getCount();
+        BodyPart clearTextPart = null;
+        BodyPart htmlTextPart = null;
         String result = null;
         Message message;
+        int count = multipart.getCount();
         for (int i = 0; i < count; i++) {
             BodyPart bodypart = multipart.getBodyPart(i);
+            if (bodypart.isMimeType("text/plain")) {
+                clearTextPart = bodypart;
+                break;
+            } else if (bodypart.isMimeType("text/html")) {
+                htmlTextPart = bodypart;
+            }
+            
             Object content = bodypart.getContent();
+            
             if (content instanceof String)
                 result = (String) content;
             else if (content instanceof InputStream)
@@ -197,9 +252,44 @@ public class EmailClient {
                 result = getMessageText(message);
             }
         }
-        return result;
         
+        if (clearTextPart != null) {
+            return clearTextPart.getContent().toString();
+        } else if (htmlTextPart != null) {
+            String html = htmlTextPart.getContent().toString();
+            return html;
+        } else
+            return result;
     }
+
+    private String getContentText(Object contentObject) throws Exception {
+        if (contentObject instanceof String) {
+            return contentObject.toString();
+        }
+        if (contentObject instanceof Multipart) {
+            BodyPart clearTextPart = null;
+            BodyPart htmlTextPart = null;
+            Multipart content = (Multipart) contentObject;
+            for (int i = 0; i < content.getCount(); i++) {
+                BodyPart part = content.getBodyPart(i);
+                if (part.isMimeType("text/plain")) {
+                    clearTextPart = part;
+                    break;
+                } else if (part.isMimeType("text/html")) {
+                    htmlTextPart = part;
+                }
+            }
+
+            if (clearTextPart != null) {
+                return clearTextPart.getContent().toString();
+            } else if (htmlTextPart != null) {
+                String html = htmlTextPart.getContent().toString();
+                return html;
+            }
+        }
+        return null;
+    }
+    
     
     public void markMessageAsRead(int messageIndexInFolder) throws Exception {
         inbox.close(false);
@@ -224,7 +314,80 @@ public class EmailClient {
             }
         }
     }
+    
+    public void setSortBy(SortBy sortBy) {
+        this.sortBy = sortBy;
+    }
 
+    public void emailSort(ArrayList<EmailMessage> messages) {
+        if (sortBy == SortBy.FROM_ASC) 
+            Collections.sort(messages, new Comparator<EmailMessage>() {
+                @Override
+                public int compare(EmailMessage  message1, EmailMessage  message2)
+                {
+                    return  message1.getFrom().compareTo(message2.getFrom());
+                }
+            });
+        else if (sortBy == SortBy.FROM_DESC)
+            Collections.sort(messages, new Comparator<EmailMessage>() {
+                @Override
+                public int compare(EmailMessage  message1, EmailMessage  message2)
+                {
+                    return  message2.getFrom().compareTo(message1.getFrom());
+                }
+            });
+        else if (sortBy == SortBy.DATE_DESC)
+            Collections.sort(messages, new Comparator<EmailMessage>() {
+                @Override
+                public int compare(EmailMessage  message1, EmailMessage  message2)
+                {
+                    return  message2.getDate().compareTo(message1.getDate());
+                }
+            });
+        else if (sortBy == SortBy.SUBJECT_ASC)
+            Collections.sort(messages, new Comparator<EmailMessage>() {
+                @Override
+                public int compare(EmailMessage  message1, EmailMessage  message2)
+                {
+                    if (message1.getSubject() == null && message2.getSubject() == null)
+                        return " ".compareTo(" ");
+                    else if (message1.getSubject() == null && message2.getSubject() != null)
+                        return " ".compareTo(message2.getSubject());
+                    else if (message1.getSubject() != null && message2.getSubject() == null)
+                        return message1.getSubject().compareTo(" ");
+                    return  message1.getSubject().compareTo(message2.getSubject());
+                }
+            });
+        else if (sortBy == SortBy.SUBJECT_DESC)
+            Collections.sort(messages, new Comparator<EmailMessage>() {
+                @Override
+                public int compare(EmailMessage  message1, EmailMessage  message2)
+                {
+                    if (message2.getSubject() == null && message1.getSubject() == null)
+                        return " ".compareTo(" ");
+                    else if (message2.getSubject() == null && message1.getSubject() != null)
+                        return " ".compareTo(message1.getSubject());
+                    else if (message2.getSubject() != null && message1.getSubject() == null)
+                        return message2.getSubject().compareTo(" ");
+                    return  message2.getSubject().compareTo(message1.getSubject());
+                }
+            });
+        
+    }
+
+    public int getMessageCountInFolder() {
+        return messageCountInFolder;
+    }
+    
+    public int getListingIndexFrom() {
+        return listingIndexFrom;
+    }
+    
+    public int getListingIndexTo() {
+        return listingIndexTo;
+    }
+        
+    
 }
 
 

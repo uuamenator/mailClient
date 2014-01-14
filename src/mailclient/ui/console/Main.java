@@ -3,6 +3,8 @@ package mailclient.ui.console;
 import java.io.PrintStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.Scanner;
 import mailclient.core.EmailAddress;
@@ -13,6 +15,7 @@ public final class Main {
 
     private final static Scanner in = new Scanner(System.in);
     private final static PrintStream out = System.out;
+    private static boolean messagesIsAfterSearch = false;
 
     public static void main(String[] args) throws Exception {
 
@@ -28,7 +31,7 @@ public final class Main {
 //        System.out.println(setNormal);
 //        System.out.println(normalLine);
         
-        out.println("Mail Client Version 0.01");
+        out.println("Mail Client Version 1.00");
         out.print("Your email: ");
         String userEmail = readEmailAddress();
 //        String userEmail = "uuamenator@gmail.com";
@@ -38,35 +41,49 @@ public final class Main {
 //        String password = "";
         EmailClient emailClient = new EmailClient(userEmail, password);
 //        password = null; // padidinti shansus kad garbage collector nutrins passworda
-        ArrayList<EmailMessage> messages = listMessages(emailClient, null);
+        ArrayList<EmailMessage> messages = listMessages(emailClient, null, null);
         int lastDisplayedMessageIndex = -1;
         while (true) {
             try {
 //                out.print("Enter message number to read, 'l' to list, 'w' to write a new message, 'q' to quit: ");
                 String menuReplyOption = "";
-                if (lastDisplayedMessageIndex >= 0) {
+                if (lastDisplayedMessageIndex >= 0) 
                     menuReplyOption = "'r' to reply, ";
-                }
-                String command = readString("Enter " + menuReplyOption + "message number to read, 's' to search, 'l' to list, 'w' to write a new message, 'q' to quit");
+                String command = readString("Enter " + menuReplyOption + "message number to read, 'sort' to select sorting, 's' to search, 'l' to list, 'w' to write a new message, 'q' to quit");
 //                in.nextLine().trim();
-                if (command.equalsIgnoreCase("q")) {
+                if (command.equalsIgnoreCase("q")) 
                     return;
-                } else if (command.equalsIgnoreCase("l")) {
-                    messages = listMessages(emailClient, null);
-                } else if (command.equalsIgnoreCase("w")) {
+                else if (command.equalsIgnoreCase("l")) 
+                    messages = listMessages(emailClient, null, null);
+                else if (command.equalsIgnoreCase("w")) 
                     send(emailClient, null);
+                else if (command.equalsIgnoreCase("sort"))
+                    setSortBy(emailClient);
+                else if (command.equalsIgnoreCase("up")) {
+                    emailClient.scrollListing(true);
+                    messages = listMessages(emailClient, null, null);
+                } else if (command.equalsIgnoreCase("down")) {
+                    emailClient.scrollListing(false);
+                    messages = listMessages(emailClient, null, null);
                 } else if (command.equalsIgnoreCase("s")) {
                     String searchFor = readString("Enter phrase to search for");
-                    messages = listMessages(emailClient, searchFor);
-                } else if (command.equalsIgnoreCase("r") && lastDisplayedMessageIndex >= 0) {
+                    String searchType = readString("Enter where to search: from 'f' to 't' subject 's' or press enter to search body");
+                    if (searchType.equalsIgnoreCase("f") || searchType.equalsIgnoreCase("t") || searchType.equalsIgnoreCase("s"))
+                        messages = listMessages(emailClient, searchFor, searchType);
+                    else
+                        messages = listMessages(emailClient, searchFor, null);
+                } else if (command.equalsIgnoreCase("r") && lastDisplayedMessageIndex >= 0) 
                     send(emailClient, messages.get(lastDisplayedMessageIndex));
-                } else if (command.matches("^[0-9]+$")) {
-                    int messageToDisplay = Integer.parseInt(command) - 1;
+                else if (command.matches("^[0-9]+$")) {
+                    int messageToDisplay;
+                    if (messagesIsAfterSearch)
+                        messageToDisplay = Integer.parseInt(command) - 1;
+                    else
+                        messageToDisplay = Integer.parseInt(command) - emailClient.getListingIndexFrom();
                     displayMessage(messages.get(messageToDisplay), emailClient);
                     lastDisplayedMessageIndex = messageToDisplay;
-                } else {
+                } else 
                     out.println("Invalid command");
-                }
             } catch (Exception ex) {
                 if (ex.getMessage() == null) {
                     out.println(ex.getClass().getCanonicalName());
@@ -225,7 +242,7 @@ public final class Main {
 
     private static void displayMessage(EmailMessage message, EmailClient emailClient) throws Exception {
         SimpleDateFormat dateformatJava = new SimpleDateFormat("dd-MM-yyyy");
-        String messageDate = dateformatJava.format(message.getData());
+        String messageDate = dateformatJava.format(message.getDate());
         out.println("-----------------------------------------------------------------------");
         out.println("Date:    " + messageDate);
         out.println("From:    " + message.getFrom());
@@ -249,20 +266,21 @@ public final class Main {
         return in.nextLine().trim();
     }
     
-    private static ArrayList<EmailMessage> listMessages(EmailClient emailClient, String searchFor) throws Exception {
+    private static ArrayList<EmailMessage> listMessages(EmailClient emailClient, String searchFor, String searchType) throws Exception {
         out.print("Listing mail...");
         ArrayList<EmailMessage> messages;
         if (searchFor == null)
-            messages = emailClient.listMessages(null);
+            messages = emailClient.listMessages(null, null);
         else 
-            messages = emailClient.listMessages(searchFor);
+            messages = emailClient.listMessages(searchFor, searchType);
         out.println();
         if (messages.isEmpty()) {
             out.println("You have no mail.");
             return messages;
-        }
-        out.println("#   Date  From                                     Subject");
-        out.println("--- ----- ---------------------------------------- --------------------------");
+        } else
+            emailClient.emailSort(messages);
+        out.println("#   Date  From                                        Subject");
+        out.println("--- ----- ------------------------------------------- --------------------------");
         for (int i = 0; i < messages.size(); i++) {
             EmailMessage message = messages.get(i);
             String subject = message.getSubject();
@@ -271,21 +289,61 @@ public final class Main {
             }
 //            subject = subject.substring(0, 50);               sdelat' if string > x...
             SimpleDateFormat dateformatJava = new SimpleDateFormat("dd-MM-yyyy");
-            String messageDate = dateformatJava.format(message.getData());
+            String messageDate = dateformatJava.format(message.getDate());
             messageDate = messageDate.substring(0,5);
-            if (message.isSeen()) 
-                out.printf("%-3d %-5s %-40s %s\n", i + 1, messageDate, message.getFrom(), subject);
-            else {
-                out.print("\033[1m");
-                out.printf("%-3d %-5s %-40s %s\n", i + 1, messageDate, message.getFrom(), subject);
-                out.print("\033[0m");
-            }
+            if (searchFor == null){
+                if (message.isSeen()) 
+                    out.printf("%-3d %-5s %-43s %s\n", i + emailClient.getListingIndexFrom(), messageDate, message.getFrom(), subject);
+                else {
+                    out.print("\033[1m");
+                    out.printf("%-3d %-5s %-43s %s\n", i + emailClient.getListingIndexFrom(), messageDate, message.getFrom(), subject);
+                    out.print("\033[0m");
+                }
+            } else {
+                if (message.isSeen()) 
+                    out.printf("%-3d %-5s %-43s %s\n", i + 1, messageDate, message.getFrom(), subject);
+                else {
+                    out.print("\033[1m");
+                    out.printf("%-3d %-5s %-43s %s\n", i + 1, messageDate, message.getFrom(), subject);
+                    out.print("\033[0m");
+                }
                 
+            }
             
         }
-        out.println("-----------------------------------------------------------------------");
+        out.println("--------------------------------------------------------------------------");
+        if (searchFor == null) {
+            messagesIsAfterSearch = false;
+            out.println("Listed messages " + emailClient.getListingIndexFrom() + " to " +
+                    emailClient.getListingIndexTo() + " from total " +
+                    emailClient.getMessageCountInFolder() + " messages in Inbox");
+            if (emailClient.getMessageCountInFolder() > 20)
+                out.println("Enter 'up' or 'down' to list more mail");
+            out.println("--------------------------------------------------------------------------");
+        } else
+            messagesIsAfterSearch = true;
         return messages;
     }
 
+    
+    private static void setSortBy(EmailClient emailClient) {
+        out.println("Sorting available by date (d), from (f), Subject (s); can descend (-) or ascend (+).");
+        String sortByField = readString("Enter d, f or s");
+        String sortingOrder = readString("Enter + or -");
+        if ("d".equalsIgnoreCase(sortByField) && "+".equals(sortingOrder))
+            emailClient.setSortBy(EmailClient.SortBy.DATE_ASC);
+        else if ("d".equalsIgnoreCase(sortByField) && "-".equals(sortingOrder))
+            emailClient.setSortBy(EmailClient.SortBy.DATE_DESC);
+        else if ("f".equalsIgnoreCase(sortByField) && "+".equals(sortingOrder))
+            emailClient.setSortBy(EmailClient.SortBy.FROM_ASC);
+        else if ("f".equalsIgnoreCase(sortByField) && "-".equals(sortingOrder))
+            emailClient.setSortBy(EmailClient.SortBy.FROM_DESC);
+        else if ("s".equalsIgnoreCase(sortByField) && "+".equals(sortingOrder))
+            emailClient.setSortBy(EmailClient.SortBy.SUBJECT_ASC);
+        else if ("s".equalsIgnoreCase(sortByField) && "-".equals(sortingOrder))
+            emailClient.setSortBy(EmailClient.SortBy.SUBJECT_DESC);
+        else
+            out.println("Wrong selection. Please select from d+, d-, f+, f-, s+ and s-");
+    }
     
 }
